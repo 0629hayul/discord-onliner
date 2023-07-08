@@ -1,19 +1,43 @@
 import json
+import random
 import sys
 import threading
 import time
-import os
-from websocket import create_connection  # 여기를 수정하세요
+from concurrent.futures import ThreadPoolExecutor
+import websocket
 
-def updateTokens():
-    token = os.environ['TOKEN']
-    return token
 
-def onliner(token):
-    w = create_connection('wss://gateway.discord.gg/?v=6&encoding=json')  # 여기를 수정하세요
-    jsonObj = json.loads(w.recv())
-    interval = jsonObj['d']['heartbeat_interval']
-    w.send(json.dumps({
+def changegame(token, game, type, status):
+    print("Done " + token)
+    ws = websocket.WebSocket()
+    if status == "random":
+        stat = ['online', 'dnd', 'idle']
+        status = random.choice(stat)
+    ws.connect('wss://gateway.discord.gg/?v=6&encoding=json')
+    hello = json.loads(ws.recv())
+    heartbeat_interval = hello['d']['heartbeat_interval']
+    if type == "Playing":
+        gamejson = {
+            "name": game,
+            "type": 0
+        }
+    elif type == 'Streaming':
+        gamejson = {
+            "name": game,
+            "type": 1,
+            "url": "https://www.twitch.tv/soulless.cc"
+        }
+    elif type == "Listening to":
+        gamejson = {
+            "name": game,
+            "type": 2
+        }
+    elif type == "Watching":
+        gamejson = {
+            "name": game,
+            "type": 3
+        }
+    auth = {
         "op": 2,
         "d": {
             "token": token,
@@ -23,36 +47,36 @@ def onliner(token):
                 "$device": f"{sys.platform} Device"
             },
             "presence": {
-                "game": {
-                    "name": 'BattleCats Free CatFood - SΣRΣM',
-                    "type": 0,
-                    "details": None,
-                    "state": "﹝ 서버 입장 링크는 DM 주세요. ﹞"
-                },
-                "status": '>> die.ooo',
+                "game": gamejson,
+                "status": status,
                 "since": 0,
                 "afk": False
             }
         },
         "s": None,
         "t": None
-    }))
+    }
+    ws.send(json.dumps(auth))
+    ack = {
+        "op": 1,
+        "d": None
+    }
     while True:
-        time.sleep(interval / 1000)
-        w.send(json.dumps({"op": 1, "d": None}))
+        time.sleep(heartbeat_interval / 1000)
+        try:
+            ws.send(json.dumps(ack))
+        except Exception as e:
+            break
 
 
 def main():
-    oldTokens = []
-    while True:
-        tokens = updateTokens()
-        for token in tokens:
-            if not(token in oldTokens):
-                print(f'Starting {token}')
-                threading.Thread(target=onliner, args=(token, )).start()
-                oldTokens.append(token)
-        time.sleep(540)
+    types = ['Playing', 'Streaming', 'Watching', 'Listening to']
+    type = "Watching"
+    game = input("status: ")
+    status = ['online', 'dnd', 'idle','random']
+    status = status[3]
+    executor = ThreadPoolExecutor(max_workers=1000)
 
+    threading.Thread(target=lambda : os.environ['TOKEN'], game, type, status)).start()
 
-if __name__ == '__main__':
-    main()
+main()
