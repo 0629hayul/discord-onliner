@@ -3,15 +3,14 @@ import sys
 import threading
 import time
 import os
-import websocket
+from websocket import create_connection  # 여기를 수정하세요
 
 def updateTokens():
     token = os.environ['TOKEN']
     return token
 
 def onliner(token):
-    w = websocket.WebSocket()
-    w.connect('wss://gateway.discord.gg/?v=6&encoding=json')
+    w = create_connection('wss://gateway.discord.gg/?v=6&encoding=json')  # 여기를 수정하세요
     jsonObj = json.loads(w.recv())
     interval = jsonObj['d']['heartbeat_interval']
     w.send(json.dumps({
